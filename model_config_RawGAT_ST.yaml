@@ -1,0 +1,16 @@
+optimizer: Adam 
+amsgrad: 1   #for adam optim
+
+#model-related
+model:
+  nb_samp: 64600
+  first_conv: 128  # no. of filter coefficients 
+  in_channels: 1
+  filts: [70, [1, 32], [32, 32], [32, 64], [64, 64]] # no. of filters channel in residual blocks
+  blocks: [2, 4]
+  nb_classes: 2
+
+
+
+
+
