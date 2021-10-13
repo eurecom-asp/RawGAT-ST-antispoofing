@@ -58,7 +58,7 @@ python tDCF_python_v2/evaluate_tDCF_asvspoof19_eval_LA.py  Eval  'eval_CM_scores
 This repository is built on our End-to-end RawNet2 (ASVspoof2021 Challenge baseline).
 - [ASVspoof 2021 Challenge baseline repo](https://github.com/asvspoof-challenge/2021/tree/main/LA/Baseline-RawNet2)
 
-AASIST (Extented work of RawGAT-ST paper) is available here.
+AASIST (Extended work of RawGAT-ST paper) is available here.
 
 - [AASIST anti-spoofing](https://github.com/clovaai/aasist)
 
