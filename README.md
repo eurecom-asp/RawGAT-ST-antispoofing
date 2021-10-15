@@ -73,7 +73,7 @@ Authors would like to acknowledge other repositories as well.
 For any query regarding this repository, please contact:
 - Hemlata Tak: tak[at]eurecom[dot]fr
 ## Citation
-If you use RawGAT-ST, AASIST and RawNet2 code for anti-spoofing please use the following citations:
+If you use RawGAT-ST, AASIST and RawNet2 for anti-spoofing please use the following citations:
 
 [1] End-to-end spectro-temporal graph attention networks for speaker verification anti-spoofing and speech deepfake detection
 ```bibtex
