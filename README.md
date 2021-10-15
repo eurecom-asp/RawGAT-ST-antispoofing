@@ -64,7 +64,7 @@ AASIST (Extended work of RawGAT-ST paper) is available here.
 
 Authors would like to acknowledge other repositories as well.
 - [min t-DCF implementation](https://www.asvspoof.org/resources/tDCF_python_v2.zip)
-- [core scripts](https://github.com/nii-yamagishilab/project-NN-Pytorch-scripts)
+- [core scripts from Xin Wang, NII Japan](https://github.com/nii-yamagishilab/project-NN-Pytorch-scripts)
 
 
 
