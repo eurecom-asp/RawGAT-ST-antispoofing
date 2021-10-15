@@ -60,7 +60,7 @@ This repository is built on our End-to-end RawNet2 (ASVspoof2021 Challenge basel
 
 AASIST (Extended work of RawGAT-ST paper) is available here.
 
-- [AASIST anti-spoofing](https://github.com/clovaai/aasist)
+- [AASIST anti-spoofing software from Jee-weon Jung, NAVER Corp.](https://github.com/clovaai/aasist)
 
 Authors would like to acknowledge other repositories as well.
 - [min t-DCF implementation](https://www.asvspoof.org/resources/tDCF_python_v2.zip)
@@ -73,7 +73,7 @@ Authors would like to acknowledge other repositories as well.
 For any query regarding this repository, please contact:
 - Hemlata Tak: tak[at]eurecom[dot]fr
 ## Citation
-If you use RawGAT-ST, AASIST and RawNet2 code in your research please use the following citations:
+If you use RawGAT-ST, AASIST and RawNet2 code for anti-spoofing please use the following citations:
 
 [1] End-to-end spectro-temporal graph attention networks for speaker verification anti-spoofing and speech deepfake detection
 ```bibtex
