@@ -313,7 +313,7 @@ class RawGAT_ST(nn.Module):
         
         self.selu = nn.SELU(inplace=True)
    
-        # Please not that here you can also use only one encoder to reduce the network parameters which is jsut half of the 0.44M (mentioned in the paper). I was doing some subband analysis and forget to remove the use of two encoders.  I also checked with one encoder and found same results. 
+        # Note that here you can also use only one encoder to reduce the network parameters which is jsut half of the 0.44M (mentioned in the paper). I was doing some subband analysis and forget to remove the use of two encoders.  I also checked with one encoder and found same results. 
         self.encoder1=nn.Sequential(
                         nn.Sequential(Residual_block(nb_filts = d_args['filts'][1], first = True)),
                         nn.Sequential(Residual_block(nb_filts = d_args['filts'][2])),
