@@ -336,24 +336,24 @@ class RawGAT_ST(nn.Module):
         )
 
         # Graph attention and pooling layer for Spectral-RawGAT
-        self.GAT_layer_spectral=GraphAttentionLayer(d_args['filts'][-1][-1],32)
+        self.GAT_layer1=GraphAttentionLayer(d_args['filts'][-1][-1],32)
         self.pool1=Pool(0.64, 32, 0.3)
 
         # Graph attention and pooling layer for Temporal-RawGAT
-        self.GAT_layer_temp=GraphAttentionLayer(d_args['filts'][-1][-1],32)
+        self.GAT_layer2=GraphAttentionLayer(d_args['filts'][-1][-1],32)
         self.pool2=Pool(0.81, 32, 0.3)
 
         # Graph attention and pooling layer for Spectro-Temporal RawGAT
-        self.GAT_layer_spectro_temp=GraphAttentionLayer(32,16)
+        self.GAT_layer3=GraphAttentionLayer(32,16)
         self.pool3=Pool(0.64, 16, 0.3)
         
         #Projection layers 
-        self.proj_spectral = nn.Linear(14,12)
-        self.proj_temp = nn.Linear(23,12)
-        self.proj_spectro_temp = nn.Linear(16,1)
+        self.proj1 = nn.Linear(14,12)
+        self.proj2 = nn.Linear(23,12)
+        self.proj = nn.Linear(16,1)
 
         # classifier layer with nclass=2 and 7 is number of nodes remaining after pooling layer in Spectro-temporal graph attention layer 
-        self.output_layer = nn.Linear(7,2)
+        self.proj_node = nn.Linear(7,2)
         
         
     def forward(self, x, Freq_aug=False):
@@ -392,12 +392,12 @@ class RawGAT_ST(nn.Module):
         e1=self.encoder1(x)            # [#bs, C(64), F(23), T(29)]
         
         # max-pooling along time with absolute value  (Attention in spectral part)
-        x_max1,_=torch.max(torch.abs(e1),dim=3)  #[#bs, C(64), F(23)]
+        x_max,_=torch.max(torch.abs(e1),dim=3)  #[#bs, C(64), F(23)]
         
-        x_gat1=self.GAT_layer_spectral(x_max1.transpose(1,2))  #(#bs,#node(F),feat_dim(C)) --> [#bs, 23, 32]
+        x_gat1=self.GAT_layer1(x_max.transpose(1,2))  #(#bs,#node(F),feat_dim(C)) --> [#bs, 23, 32]
         
         x_pool1=self.pool1(x_gat1)
-        out1=self.proj_spectral(x_pool1.transpose(1,3))
+        out1=self.proj1(x_pool1.transpose(1,3))
         out1=out1.view(out1.shape[0],out1.shape[1],out1.shape[3]) #(#bs,feat_dim,#node) --> [#bs, 32, 12]
         
 
@@ -408,11 +408,11 @@ class RawGAT_ST(nn.Module):
         x_max2,_=torch.max(torch.abs(e2),dim=2) # max along frequency  #[#bs, C(64), T(29)]
         
         
-        x_gat2=self.GAT_layer_temp(x_max2.transpose(1,2)) #(#bs,#node(T),feat_dim(C)) --> #[#bs, 29, 32]
+        x_gat2=self.GAT_layer2(x_max2.transpose(1,2)) #(#bs,#node(T),feat_dim(C)) --> #[#bs, 29, 32]
        
         
         x_pool2=self.pool2(x_gat2)
-        out2=self.proj_temp(x_pool2.transpose(1,3))
+        out2=self.proj2(x_pool2.transpose(1,3))
         out2=out2.view(out2.shape[0],out2.shape[1],out2.shape[3]) #(#bs,feat_dim,#node)  #[#bs, 32, 12]
         
 
@@ -420,13 +420,13 @@ class RawGAT_ST(nn.Module):
         out_gat=torch.mul(out1,out2)  #(#bs,feat_dim,#node) -->  #[#bs, 32, 12]
         
         # Give fuse GAT output (out_gat) to Spectro-temporal GAT layer
-        x_gat3=self.GAT_layer_spectro_temp(out_gat.transpose(1,2))  #(#bs,#node,feat_out_dim) --> #[#bs, 12, 16]
+        x_gat3=self.GAT_layer3(out_gat.transpose(1,2))  #(#bs,#node,feat_out_dim) --> #[#bs, 12, 16]
         
         x_pool3=self.pool3(x_gat3)
         
-        out_proj=self.proj_spectro_temp(x_pool3).flatten(1)  #(#bs,#nodes) --> [#bs, 7]
+        out_proj=self.proj(x_pool3).flatten(1)  #(#bs,#nodes) --> [#bs, 7]
         
-        output=self.output_layer(out_proj)  #(#bs, output node(no. of classes)) ---> [#bs,2]
+        output=self.proj_node(out_proj)  #(#bs, output node(no. of classes)) ---> [#bs,2]
         
         return output
 
