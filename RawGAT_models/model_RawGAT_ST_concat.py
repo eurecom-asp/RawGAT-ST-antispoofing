@@ -48,6 +48,7 @@ class GraphAttentionLayer(nn.Module):
 
         # apply batch norm
         x = self._apply_BN(x)
+        # apply activation
         x = self.act(x)
         return x
 
@@ -133,12 +134,8 @@ class Pool(nn.Module):
         batch_size=h.shape[0]
 
         # first reflect the weights and then rank them
-        
         H= h*scores
-        
-        
         _, idx = torch.topk(scores, max(2, int(k*num_nodes)),dim=1)
-        
         new_g=[]
 
         for i in range(batch_size):
@@ -159,7 +156,7 @@ class CONV(nn.Module):
         return 700 * (10 ** (mel / 2595) - 1)
 
 
-    def __init__(self, device,out_channels, kernel_size, sample_rate=16000, in_channels=1,
+    def __init__(self, device,out_channels, kernel_size, in_channels=1,sample_rate=16000,
                  stride=1, padding=0, dilation=1, bias=False, groups=1,mask=False):
         super(CONV,self).__init__()
         if in_channels != 1:
@@ -213,7 +210,7 @@ class CONV(nn.Module):
         
         band_pass_filter=self.band_pass.to(self.device)
 
-        # Frequency masking: We randomly mask 1/5th of no. of sinc filters (70)
+        # Frequency masking: We randomly mask (1/5)th of no. of sinc filters channels (70)
         if (mask==True):
             for i1 in range(1):
                 A=np.random.uniform(0,14) 
@@ -301,60 +298,65 @@ class Residual_block(nn.Module):
 class RawGAT_ST(nn.Module):
     def __init__(self, d_args, device):
         super(RawGAT_ST, self).__init__()
-
-        
         self.device=device
 
+        '''
+        Sinc conv. layer
+        '''
         self.conv_time=CONV(device=self.device,
-			out_channels = d_args['filts'][0],
+			out_channels = d_args['out_channels'],
 			kernel_size = d_args['first_conv'],
                         in_channels = d_args['in_channels']
         )
         self.first_bn = nn.BatchNorm2d(num_features = 1)
         
         self.selu = nn.SELU(inplace=True)
-   
         
+        # Note that here you can also use only one encoder to reduce the network parameters which is jsut half of the 0.44M (mentioned in the paper). I was doing some subband analysis and forget to remove the use of two encoders.  I also checked with one encoder and found same results. 
+        
+        
+
         self.encoder1=nn.Sequential(
                         nn.Sequential(Residual_block(nb_filts = d_args['filts'][1], first = True)),
+                        nn.Sequential(Residual_block(nb_filts = d_args['filts'][1])),
                         nn.Sequential(Residual_block(nb_filts = d_args['filts'][2])),
-                        nn.Sequential(Residual_block(nb_filts = d_args['filts'][3])),
                         
-                        nn.Sequential(Residual_block(nb_filts = d_args['filts'][4])),
-                        nn.Sequential(Residual_block(nb_filts = d_args['filts'][4])),
-                        nn.Sequential(Residual_block(nb_filts = d_args['filts'][4]))
+                        nn.Sequential(Residual_block(nb_filts = d_args['filts'][3])),
+                        nn.Sequential(Residual_block(nb_filts = d_args['filts'][3])),
+                        nn.Sequential(Residual_block(nb_filts = d_args['filts'][3]))
         )
-
 
         self.encoder2=nn.Sequential(
                         nn.Sequential(Residual_block(nb_filts = d_args['filts'][1], first = True)),
+                        nn.Sequential(Residual_block(nb_filts = d_args['filts'][1])),
                         nn.Sequential(Residual_block(nb_filts = d_args['filts'][2])),
-                        nn.Sequential(Residual_block(nb_filts = d_args['filts'][3])),
                         
-                        nn.Sequential(Residual_block(nb_filts = d_args['filts'][4])),
-                        nn.Sequential(Residual_block(nb_filts = d_args['filts'][4])),
-                        nn.Sequential(Residual_block(nb_filts = d_args['filts'][4]))
+                        nn.Sequential(Residual_block(nb_filts = d_args['filts'][3])),
+                        nn.Sequential(Residual_block(nb_filts = d_args['filts'][3])),
+                        nn.Sequential(Residual_block(nb_filts = d_args['filts'][3]))
         )
 
-        # Graph attention and pooling layer for Spectral-GAT
-        self.GAT_layer_spectral=GraphAttentionLayer(d_args['filts'][-1][-1],32)
+
+        # Graph attention and pooling layer for Spectral-RawGAT
+        self.GAT_layer1=GraphAttentionLayer(d_args['filts'][-1][-1],32)
         self.pool1=Pool(0.64, 32, 0.3)
 
-        # Graph attention and pooling layer for Temporal-GAT
-        self.GAT_layer_temp=GraphAttentionLayer(d_args['filts'][-1][-1],32)
+        # Graph attention and pooling layer for Temporal-RawGAT
+        self.GAT_layer2=GraphAttentionLayer(d_args['filts'][-1][-1],32)
         self.pool2=Pool(0.81, 32, 0.3)
 
         # Graph attention and pooling layer for Spectro-Temporal RawGAT
-        self.GAT_layer_spectro_temp=GraphAttentionLayer(32*2,32) 
+        self.GAT_layer3=GraphAttentionLayer(32*2,32)
         self.pool3=Pool(0.64, 32, 0.3)
         
         #Projection layers 
-        self.proj_spectral = nn.Linear(14,12)
-        self.proj_temp = nn.Linear(23,12)
-        self.proj_spectro_temp = nn.Linear(32,1)
+        self.proj1 = nn.Linear(14,12)
+        self.proj2 = nn.Linear(23,12)
+        self.proj = nn.Linear(32,1)
+
 
         # classifier layer with nclass=2 and 7 is number of nodes remaining after pooling layer in Spectro-temporal graph attention layer 
-        self.output_layer = nn.Linear(7,2)
+        self.proj_node = nn.Linear(7,2)
         
         
     def forward(self, x, Freq_aug=False):
@@ -373,58 +375,62 @@ class RawGAT_ST(nn.Module):
         # Freq masking during training only
 
         if (Freq_aug==True):
-            x=self.conv_time(x,mask=True)  # (#bs,70,64472)
+            x=self.conv_time(x,mask=True)  #(#bs,sinc_filt(70),64472)
+            
         else:
             x=self.conv_time(x,mask=False)
         
         """
         Different with the our RawNet2 model, we interpret the output of sinc-convolution layer as 2-dimensional image with one channel (like 2-D representation).
         """
-        x = x.unsqueeze(dim=1)  #(#bs,1,sinc-filt(70),64472)
+        x = x.unsqueeze(dim=1)  # 2-D (#bs,1,sinc-filt(70),64472)
         
-        x = F.max_pool2d(torch.abs(x), (3,3))
+        x = F.max_pool2d(torch.abs(x), (3,3))  #[#bs, C(1),F(23),T(21490)]
         
 
         x = self.first_bn(x)
         x = self.selu(x)
         
         # encoder structure for spectral GAT
-        e1=self.encoder1(x)
+        e1=self.encoder1(x)            # [#bs, C(64), F(23), T(29)]
         
-        # max-pooling along time with absolute value
-        x_max1,_=torch.max(torch.abs(e1),dim=3) 
+        # max-pooling along time with absolute value  (Attention in spectral part)
+        x_max,_=torch.max(torch.abs(e1),dim=3)  #[#bs, C(64), F(23)]
         
-        x_gat1=self.GAT_layer_spectral(x_max1.transpose(1,2))
+        x_gat1=self.GAT_layer1(x_max.transpose(1,2))  #(#bs,#node(F),feat_dim(C)) --> [#bs, 23, 32]
         
         x_pool1=self.pool1(x_gat1)
-        out1=self.proj_spectral(x_pool1.transpose(1,3))
-        out1=out1.view(out1.shape[0],out1.shape[1],out1.shape[3]) #(#bs,feat_dim,#node)
+        out1=self.proj1(x_pool1.transpose(1,3))
+        out1=out1.view(out1.shape[0],out1.shape[1],out1.shape[3]) #(#bs,feat_dim,#node) --> [#bs, 32, 12]
         
+
+
         # encoder structure for temporal GAT
-        e2=self.encoder2(x)
+        e2=self.encoder2(x)   #[#bs, C(64), F(23), T(29)]
         
-        x_max2,_=torch.max(torch.abs(e2),dim=2) # max along frequency
+        x_max2,_=torch.max(torch.abs(e2),dim=2) # max along frequency  #[#bs, C(64), T(29)]
+        
+        
+        x_gat2=self.GAT_layer2(x_max2.transpose(1,2)) #(#bs,#node(T),feat_dim(C)) --> #[#bs, 29, 32]
        
         
-        x_gat2=self.GAT_layer_temp(x_max2.transpose(1,2))
-        
-        
         x_pool2=self.pool2(x_gat2)
-        out2=self.proj_temp(x_pool2.transpose(1,3))
-        out2=out2.view(out2.shape[0],out2.shape[1],out2.shape[3]) #(#bs,feat_dim,#node)
+        out2=self.proj2(x_pool2.transpose(1,3))
+        out2=out2.view(out2.shape[0],out2.shape[1],out2.shape[3]) #(#bs,feat_dim,#node)  #[#bs, 32, 12]
         
-        # To fuse both spectral (out1) and temporal (out2) graphs using Concat operation
-        out_gat=torch.cat((out1,out2),1)  #(#bs,2*feat_dim,#node)
+
+        # To fuse both spectral (out1) and temporal (out2) graphs using Concat operation  (graph combination)
+        out_gat=torch.cat((out1,out2),1) #(#bs,2*feat_dim,#node)
         
         # Give fuse GAT output (out_gat) to Spectro-temporal GAT layer
-        x_gat3=self.GAT_layer_spectro_temp(out_gat.transpose(1,2))  #(#bs,#node,feat_out_dim)
+        x_gat3=self.GAT_layer3(out_gat.transpose(1,2))  #(#bs,#node,feat_out_dim)
         
         x_pool3=self.pool3(x_gat3)
         
-        out_proj=self.proj_spectro_temp(x_pool3).flatten(1)  #(#bs,#nodes)
+        out_proj=self.proj(x_pool3).flatten(1)  #(#bs,#nodes)
        
-        output=self.output_layer(out_proj)  #(#bs,2)
-       
+        output=self.proj_node(out_proj)  #(#bs,2)
+        
         return output
 
         
