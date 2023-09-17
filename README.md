@@ -60,11 +60,11 @@ This repository is built on our End-to-end RawNet2 (ASVspoof2021 Challenge basel
 
 AASIST (Extended work of RawGAT-ST paper) is available here.
 
-- [AASIST anti-spoofing software from Jee-weon Jung, NAVER Corp.](https://github.com/clovaai/aasist)
+- [AASIST anti-spoofing](https://github.com/clovaai/aasist)
 
 Authors would like to acknowledge other repositories as well.
 - [min t-DCF implementation](https://www.asvspoof.org/resources/tDCF_python_v2.zip)
-- [core scripts from Dr. Xin Wang, NII Japan](https://github.com/nii-yamagishilab/project-NN-Pytorch-scripts)
+- [core scripts](https://github.com/nii-yamagishilab/project-NN-Pytorch-scripts)
 
 
 
