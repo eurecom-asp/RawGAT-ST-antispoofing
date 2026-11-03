@@ -241,7 +241,7 @@ if __name__ == '__main__':
     
     
     if args.model_path:
-        model.load_state_dict(torch.load(args.model_path,map_location=device))
+        model.load_state_dict(torch.load(args.model_path,map_location=device, weights_only=True))
         print('Model loaded : {}'.format(args.model_path))
 
 
